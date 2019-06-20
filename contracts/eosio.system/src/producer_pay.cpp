@@ -75,6 +75,16 @@ namespace eosiosystem {
    }
 
    using namespace eosio;
+
+   double get_target_emission_per_year(double activated_share) {
+      if (activated_share <= 0.33) {
+         return 0.2;
+      } else if (activated_share >= 0.66) {
+         return 0.1;
+      }
+      return -10. / 33 * (activated_share - 0.33) + 0.2;
+   }
+
    void system_contract::claimrewards( const name owner ) {
       require_auth( owner );
 
@@ -92,8 +102,8 @@ namespace eosiosystem {
       const auto usecs_since_last_fill = (ct - _gstate.last_pervote_bucket_fill).count();
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
-         auto new_tokens = static_cast<int64_t>( (continuous_rate * double(token_supply.amount) * double(usecs_since_last_fill)) / double(useconds_per_year) );
-
+         double emission_rate = get_target_emission_per_year(1.0 * _gstate.total_activated_stake / token_supply.amount);
+         auto new_tokens = static_cast<int64_t>(emission_rate * token_supply.amount * usecs_since_last_fill / useconds_per_year);
          auto to_producers     = new_tokens / 5;
          auto to_savings       = new_tokens - to_producers;
          auto to_per_block_pay = to_producers / 4;
