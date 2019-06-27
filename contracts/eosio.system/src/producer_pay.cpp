@@ -5,7 +5,7 @@
 namespace eosiosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
-   const int64_t  min_activated_stake   = 150'000'000'0000;
+   const int64_t  min_activated_stake   = 25'090'624'0000;
    const double   continuous_rate       = 0.04879;          // 5% annual rate
    const double   perblock_rate         = 0.0025;           // 0.25%
    const double   standby_rate          = 0.0075;           // 0.75%
@@ -104,19 +104,19 @@ namespace eosiosystem {
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
          double emission_rate = get_target_emission_per_year(1.0 * _gstate.total_activated_stake / token_supply.amount);
          auto new_tokens = static_cast<int64_t>(emission_rate * token_supply.amount * usecs_since_last_fill / useconds_per_year);
-         auto to_producers     = new_tokens / 5;
-         auto to_savings       = new_tokens - to_producers;
+         auto to_dao     = new_tokens / 5;
+         auto to_producers  = new_tokens - to_dao;
          auto to_per_block_pay = to_producers / 4;
          auto to_per_vote_pay  = to_producers - to_per_block_pay;
 
          INLINE_ACTION_SENDER(eosio::token, issue)(
             token_account, { {_self, active_permission} },
-            { _self, asset(new_tokens, core_symbol()), std::string("issue tokens for producer pay and savings") }
+            { _self, asset(new_tokens, core_symbol()), std::string("issue tokens for producer pay and DAO") }
          );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)(
             token_account, { {_self, active_permission} },
-            { _self, saving_account, asset(to_savings, core_symbol()), "unallocated inflation" }
+            { _self, dao_account, asset(to_dao, core_symbol()), "reward for DAO" }
          );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)(
