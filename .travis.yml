@@ -1,0 +1,18 @@
+language: c
+git:
+  depth: false
+services:
+  - docker
+cache:
+  directories:
+    - $HOME/.ccache
+  timeout: 1000
+matrix:
+  fast_finish: true
+jobs:
+  include:
+    - stage: build
+      script:
+        - set -e
+        - docker build -t haya:contracts .
+        - docker run haya:contracts /haya/contracts/build/tests/unit_test
