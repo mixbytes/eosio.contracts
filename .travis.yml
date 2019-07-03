@@ -3,10 +3,6 @@ git:
   depth: false
 services:
   - docker
-cache:
-  directories:
-    - $HOME/.ccache
-  timeout: 1000
 matrix:
   fast_finish: true
 jobs:
