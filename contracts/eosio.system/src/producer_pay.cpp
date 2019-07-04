@@ -1,6 +1,7 @@
 #include <eosio.system/eosio.system.hpp>
 
 #include <eosio.token/eosio.token.hpp>
+#include <cmath>
 
 namespace eosiosystem {
 
@@ -85,6 +86,10 @@ namespace eosiosystem {
       return -10. / 33 * (activated_share - 0.33) + 0.2;
    }
 
+   double get_continuous_rate(double emission_rate) {
+         return (pow(1 + emission_rate, 1./blocks_per_hour) - 1) * blocks_per_hour;
+   }
+
    void system_contract::claimrewards( const name owner ) {
       require_auth( owner );
 
@@ -103,7 +108,8 @@ namespace eosiosystem {
 
       if( usecs_since_last_fill > 0 && _gstate.last_pervote_bucket_fill > time_point() ) {
          double emission_rate = get_target_emission_per_year(1.0 * _gstate.total_activated_stake / token_supply.amount);
-         auto new_tokens = static_cast<int64_t>(emission_rate * token_supply.amount * usecs_since_last_fill / useconds_per_year);
+         double continuous_rate = get_continuous_rate(emission_rate);
+         auto new_tokens = static_cast<int64_t>(continuous_rate * token_supply.amount * usecs_since_last_fill / useconds_per_year);
          auto to_dao     = new_tokens / 5;
          auto to_producers  = new_tokens - to_dao;
          auto to_per_block_pay = to_producers / 4;
