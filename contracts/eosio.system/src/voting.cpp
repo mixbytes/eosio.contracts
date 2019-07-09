@@ -85,15 +85,32 @@ namespace eosiosystem {
       });
    }
 
+   int get_producer_number(int activated_share, const std::vector<pair<int, int> >& sorted_producer_points) {
+    for (auto iterator = sorted_producer_points.rbegin(); iterator != sorted_producer_points.rend(); iterator++) {
+      if (activated_share >= iterator->first) {
+        return iterator->second;
+      }
+    }
+    return 21;
+   }
+
    void system_contract::update_elected_producers( block_timestamp block_time ) {
       _gstate.last_producer_schedule_update = block_time;
 
       auto idx = _producers.get_index<"prototalvote"_n>();
 
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
-      top_producers.reserve(21);
+      const asset token_supply = eosio::token::get_supply(token_account, core_symbol().code() );
+      int activated_share = 100 * _gstate.total_activated_stake / token_supply.amount;
+      int max_producer_number = get_producer_number(activated_share, {
+        {20, 30},
+        {40, 60},
+        {60, 80},
+        {80, 100},
+      });
+      top_producers.reserve(max_producer_number);
 
-      for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
+      for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < max_producer_number && 0 < it->total_votes && it->active(); ++it ) {
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
 
@@ -114,9 +131,6 @@ namespace eosiosystem {
 
       if( set_proposed_producers( packed_schedule.data(),  packed_schedule.size() ) >= 0 ) {
          _gstate.last_producer_schedule_size = static_cast<decltype(_gstate.last_producer_schedule_size)>( top_producers.size() );
-         print("New PRODUCERS");
-      } else {
-        print("Failed to update producers");
       }
    }
 
@@ -209,7 +223,7 @@ namespace eosiosystem {
          check( producers.size() == 0, "cannot vote for producers and proxy at same time" );
          check( voter_name != proxy, "cannot proxy to self" );
       } else {
-         check( producers.size() <= 30, "attempt to vote for too many producers" );
+         check( producers.size() <= 100, "attempt to vote for too many producers" );
          for( size_t i = 1; i < producers.size(); ++i ) {
             check( producers[i-1] < producers[i], "producer votes must be unique and sorted" );
          }
