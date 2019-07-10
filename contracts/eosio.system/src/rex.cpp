@@ -143,9 +143,6 @@ namespace eosiosystem {
       }
       asset pending_sell_order = update_rex_account( from, current_order.proceeds, current_order.stake_change );
       if ( !current_order.success ) {
-         if ( from == "b1"_n ) {
-            check( false, "b1 sellrex orders should not be queued" );
-         }
          /**
           * REX order couldn't be filled and is added to queue.
           * If account already has an open order, requested rex is added to existing order.
@@ -1208,26 +1205,14 @@ namespace eosiosystem {
     */
    void system_contract::update_rex_stake( const name& voter )
    {
-      int64_t delta_stake = 0;
       auto bitr = _rexbalance.find( voter.value );
       if ( bitr != _rexbalance.end() && rex_available() ) {
-         asset init_vote_stake = bitr->vote_stake;
          asset current_vote_stake( 0, core_symbol() );
          current_vote_stake.amount = ( uint128_t(bitr->rex_balance.amount) * _rexpool.begin()->total_lendable.amount )
                                      / _rexpool.begin()->total_rex.amount;
          _rexbalance.modify( bitr, same_payer, [&]( auto& rb ) {
             rb.vote_stake.amount = current_vote_stake.amount; 
          });
-         delta_stake = current_vote_stake.amount - init_vote_stake.amount;
-      }
-
-      if ( delta_stake != 0 ) {
-         auto vitr = _voters.find( voter.value );
-         if ( vitr != _voters.end() ) {
-            _voters.modify( vitr, same_payer, [&]( auto& vinfo ) {
-               vinfo.staked += delta_stake;
-            });
-         }
       }
    }
 

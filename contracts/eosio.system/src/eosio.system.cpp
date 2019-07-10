@@ -412,6 +412,7 @@ namespace eosiosystem {
         res.owner = newact;
         res.net_weight = asset( 0, system_contract::get_core_symbol() );
         res.cpu_weight = asset( 0, system_contract::get_core_symbol() );
+        res.vote_weight = asset( 0, system_contract::get_core_symbol() );
       });
 
       set_resource_limits( newact.value, 0, 0, 0 );

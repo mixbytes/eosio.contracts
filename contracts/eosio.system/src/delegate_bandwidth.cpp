@@ -33,13 +33,13 @@ namespace eosiosystem {
       name          owner;
       asset         net_weight;
       asset         cpu_weight;
+      asset         vote_weight;
       int64_t       ram_bytes = 0;
-
-      bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0 && ram_bytes == 0; }
+      bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0 && vote_weight.amount == 0 && ram_bytes == 0; }
       uint64_t primary_key()const { return owner.value; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(ram_bytes) )
+      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(vote_weight)(ram_bytes) )
    };
 
 
@@ -51,12 +51,13 @@ namespace eosiosystem {
       name          to;
       asset         net_weight;
       asset         cpu_weight;
+      asset         vote_weight;
 
-      bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0; }
+      bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0 && vote_weight.amount == 0; }
       uint64_t  primary_key()const { return to.value; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
+      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(vote_weight) )
 
    };
 
@@ -65,12 +66,13 @@ namespace eosiosystem {
       time_point_sec  request_time;
       eosio::asset    net_amount;
       eosio::asset    cpu_amount;
+      eosio::asset    vote_amount;
 
-      bool is_empty()const { return net_amount.amount == 0 && cpu_amount.amount == 0; }
+      bool is_empty()const { return net_amount.amount == 0 && cpu_amount.amount == 0 && vote_amount.amount == 0; }
       uint64_t  primary_key()const { return owner.value; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount) )
+      EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(net_amount)(cpu_amount)(vote_amount) )
    };
 
    /**
@@ -154,6 +156,7 @@ namespace eosiosystem {
                res.owner = receiver;
                res.net_weight = asset( 0, core_symbol() );
                res.cpu_weight = asset( 0, core_symbol() );
+               res.vote_weight = asset( 0, core_symbol() );
                res.ram_bytes = bytes_out;
             });
       } else {
@@ -238,10 +241,13 @@ namespace eosiosystem {
    }
 
    void system_contract::changebw( name from, name receiver,
-                                   const asset stake_net_delta, const asset stake_cpu_delta, bool transfer )
+                                   const asset stake_net_delta, 
+                                   const asset stake_cpu_delta, 
+                                   const asset stake_vote_delta, 
+                                   bool transfer )
    {
       require_auth( from );
-      check( stake_net_delta.amount != 0 || stake_cpu_delta.amount != 0, "should stake non-zero amount" );
+      check( stake_net_delta.amount != 0 || stake_cpu_delta.amount != 0 || stake_vote_delta.amount != 0, "should stake non-zero amount" );
       check( std::abs( (stake_net_delta + stake_cpu_delta).amount )
              >= std::max( std::abs( stake_net_delta.amount ), std::abs( stake_cpu_delta.amount ) ),
              "net and cpu deltas cannot be opposite signs" );
@@ -261,16 +267,20 @@ namespace eosiosystem {
                   dbo.to            = receiver;
                   dbo.net_weight    = stake_net_delta;
                   dbo.cpu_weight    = stake_cpu_delta;
+                  dbo.vote_weight   = stake_vote_delta;
                });
          }
          else {
             del_tbl.modify( itr, same_payer, [&]( auto& dbo ){
                   dbo.net_weight    += stake_net_delta;
                   dbo.cpu_weight    += stake_cpu_delta;
+                  dbo.vote_weight   += stake_vote_delta;
                });
          }
          check( 0 <= itr->net_weight.amount, "insufficient staked net bandwidth" );
          check( 0 <= itr->cpu_weight.amount, "insufficient staked cpu bandwidth" );
+         check( 0 <= itr->vote_weight.amount, "insufficient staked vote bandwidth" );
+
          if ( itr->is_empty() ) {
             del_tbl.erase( itr );
          }
@@ -285,15 +295,18 @@ namespace eosiosystem {
                   tot.owner = receiver;
                   tot.net_weight    = stake_net_delta;
                   tot.cpu_weight    = stake_cpu_delta;
+                  tot.vote_weight   = stake_vote_delta;
                });
          } else {
             totals_tbl.modify( tot_itr, from == receiver ? from : same_payer, [&]( auto& tot ) {
                   tot.net_weight    += stake_net_delta;
                   tot.cpu_weight    += stake_cpu_delta;
+                  tot.vote_weight   += stake_vote_delta;
                });
          }
          check( 0 <= tot_itr->net_weight.amount, "insufficient staked total net bandwidth" );
          check( 0 <= tot_itr->cpu_weight.amount, "insufficient staked total cpu bandwidth" );
+         check( 0 <= tot_itr->vote_weight.amount, "insufficient staked total cpu bandwidth" );
 
          {
             bool ram_managed = false;
@@ -331,6 +344,7 @@ namespace eosiosystem {
          //create/update/delete refund
          auto net_balance = stake_net_delta;
          auto cpu_balance = stake_cpu_delta;
+         auto vote_balance = stake_vote_delta;
          bool need_deferred_trx = false;
 
 
@@ -359,18 +373,26 @@ namespace eosiosystem {
                   } else {
                      cpu_balance.amount = 0;
                   }
+                  r.vote_amount -= vote_balance;
+                  if ( r.vote_amount.amount < 0 ){
+                     vote_balance = -r.vote_amount;
+                     r.vote_amount.amount = 0;
+                  } else {
+                     vote_balance.amount = 0;
+                  }
                });
 
                check( 0 <= req->net_amount.amount, "negative net refund amount" ); //should never happen
                check( 0 <= req->cpu_amount.amount, "negative cpu refund amount" ); //should never happen
-
+               check( 0 <= req->vote_amount.amount, "negative vote refund amount" ); //should never happen
+               
                if ( req->is_empty() ) {
                   refunds_tbl.erase( req );
                   need_deferred_trx = false;
                } else {
                   need_deferred_trx = true;
                }
-            } else if ( net_balance.amount < 0 || cpu_balance.amount < 0 ) { //need to create refund
+            } else if ( net_balance.amount < 0 || cpu_balance.amount < 0 || vote_balance.amount < 0) { //need to create refund
                refunds_tbl.emplace( from, [&]( refund_request& r ) {
                   r.owner = from;
                   if ( net_balance.amount < 0 ) {
@@ -384,6 +406,12 @@ namespace eosiosystem {
                      cpu_balance.amount = 0;
                   } else {
                      r.cpu_amount = asset( 0, core_symbol() );
+                  }
+                  if ( vote_balance.amount < 0 ) {
+                     r.vote_amount = -vote_balance;
+                     vote_balance.amount = 0;
+                  } else {
+                     r.vote_amount = asset( 0, core_symbol() );
                   }
                   r.request_time = current_time_point();
                });
@@ -404,7 +432,7 @@ namespace eosiosystem {
             cancel_deferred( from.value );
          }
 
-         auto transfer_amount = net_balance + cpu_balance;
+         auto transfer_amount = net_balance + cpu_balance + vote_balance;
          if ( 0 < transfer_amount.amount ) {
             INLINE_ACTION_SENDER(eosio::token, transfer)(
                token_account, { {source_stake_from, active_permission} },
@@ -414,7 +442,7 @@ namespace eosiosystem {
       }
 
       vote_stake_updater( from );
-      update_voting_power( from, stake_net_delta + stake_cpu_delta );
+      update_voting_power( from, stake_vote_delta);
    }
 
    void system_contract::update_voting_power( const name& voter, const asset& total_update )
@@ -433,10 +461,6 @@ namespace eosiosystem {
 
       check( 0 <= voter_itr->staked, "stake for voting cannot be negative" );
 
-      if( voter == "b1"_n ) {
-         validate_b1_vesting( voter_itr->staked );
-      }
-
       if( voter_itr->producers.size() || voter_itr->proxy ) {
          update_votes( voter, voter_itr->proxy, voter_itr->producers, false );
       }
@@ -444,28 +468,33 @@ namespace eosiosystem {
 
    void system_contract::delegatebw( name from, name receiver,
                                      asset stake_net_quantity,
-                                     asset stake_cpu_quantity, bool transfer )
+                                     asset stake_cpu_quantity, 
+                                     asset stake_vote_quantity, 
+                                     bool transfer )
    {
       asset zero_asset( 0, core_symbol() );
       check( stake_cpu_quantity >= zero_asset, "must stake a positive amount" );
       check( stake_net_quantity >= zero_asset, "must stake a positive amount" );
-      check( stake_net_quantity.amount + stake_cpu_quantity.amount > 0, "must stake a positive amount" );
+      check( stake_vote_quantity >= zero_asset, "must stake a positive amount" );
+      check( stake_net_quantity.amount + stake_cpu_quantity.amount + stake_vote_quantity.amount > 0, "must stake a positive amount" );
       check( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
 
-      changebw( from, receiver, stake_net_quantity, stake_cpu_quantity, transfer);
+      changebw( from, receiver, stake_net_quantity, stake_cpu_quantity, stake_vote_quantity, transfer);
    } // delegatebw
 
    void system_contract::undelegatebw( name from, name receiver,
-                                       asset unstake_net_quantity, asset unstake_cpu_quantity )
+                                       asset unstake_net_quantity, 
+                                       asset unstake_cpu_quantity,
+                                       asset unstake_vote_quantity )
    {
       asset zero_asset( 0, core_symbol() );
       check( unstake_cpu_quantity >= zero_asset, "must unstake a positive amount" );
       check( unstake_net_quantity >= zero_asset, "must unstake a positive amount" );
       check( unstake_cpu_quantity.amount + unstake_net_quantity.amount > 0, "must unstake a positive amount" );
-      check( _gstate.total_activated_stake >= min_activated_stake,
-             "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
+      // check( _gstate.total_activated_stake >= min_activated_stake,
+      //        "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
-      changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, false);
+      changebw( from, receiver, -unstake_net_quantity, -unstake_cpu_quantity, -unstake_vote_quantity, false);
    } // undelegatebw
 
 
@@ -480,7 +509,7 @@ namespace eosiosystem {
 
       INLINE_ACTION_SENDER(eosio::token, transfer)(
          token_account, { {stake_account, active_permission}, {req->owner, active_permission} },
-         { stake_account, req->owner, req->net_amount + req->cpu_amount, std::string("unstake") }
+         { stake_account, req->owner, req->net_amount + req->cpu_amount + req->vote_amount, std::string("unstake") }
       );
 
       refunds_tbl.erase( req );

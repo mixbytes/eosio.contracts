@@ -369,7 +369,10 @@ namespace eosiosystem {
           */
          [[eosio::action]]
          void delegatebw( name from, name receiver,
-                          asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+                          asset stake_net_quantity, 
+                          asset stake_cpu_quantity,
+                          asset stake_vote_quantity, 
+                          bool transfer );
 
          /**
           * Sets total_rent balance of REX pool to the passed value
@@ -514,7 +517,9 @@ namespace eosiosystem {
           */
          [[eosio::action]]
          void undelegatebw( name from, name receiver,
-                            asset unstake_net_quantity, asset unstake_cpu_quantity );
+                            asset unstake_net_quantity, 
+                            asset unstake_cpu_quantity,
+                            asset unstake_vote_quantity );
 
 
          /**
@@ -681,7 +686,10 @@ namespace eosiosystem {
 
          // defined in delegate_bandwidth.cpp
          void changebw( name from, name receiver,
-                        asset stake_net_quantity, asset stake_cpu_quantity, bool transfer );
+                        asset stake_net_quantity, 
+                        asset stake_cpu_quantity, 
+                        asset stake_vote_quantity,
+                        bool transfer );
          void update_voting_power( const name& voter, const asset& total_update );
 
          // defined in voting.hpp
