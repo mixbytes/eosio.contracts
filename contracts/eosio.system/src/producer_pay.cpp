@@ -122,7 +122,7 @@ namespace eosiosystem {
 
          INLINE_ACTION_SENDER(eosio::token, transfer)(
             token_account, { {_self, active_permission} },
-            { _self, dao_account, asset(to_dao, core_symbol()), "reward for DAO" }
+            { _self, savings_account, asset(to_dao, core_symbol()), "reward for DAO" }
          );
 
          INLINE_ACTION_SENDER(eosio::token, transfer)(

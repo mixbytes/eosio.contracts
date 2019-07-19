@@ -1,9 +1,9 @@
-add_contract(eosio.wrap eosio.wrap ${CMAKE_CURRENT_SOURCE_DIR}/src/eosio.wrap.cpp)
+add_contract(haya.wrap haya.wrap ${CMAKE_CURRENT_SOURCE_DIR}/src/eosio.wrap.cpp)
 
-target_include_directories(eosio.wrap
+target_include_directories(haya.wrap
    PUBLIC
    ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-set_target_properties(eosio.wrap
+set_target_properties(haya.wrap
    PROPERTIES
    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")

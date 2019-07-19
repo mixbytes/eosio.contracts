@@ -58,7 +58,7 @@ namespace eosiosystem {
          return ( flags & ~static_cast<F>(field) );
    }
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] name_bid {
+   struct [[eosio::table, eosio::contract("haya.system")]] name_bid {
      name            newname;
      name            high_bidder;
      int64_t         high_bid = 0; ///< negative high_bid == closed auction waiting to be claimed
@@ -68,7 +68,7 @@ namespace eosiosystem {
      uint64_t by_high_bid()const { return static_cast<uint64_t>(-high_bid); }
    };
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] bid_refund {
+   struct [[eosio::table, eosio::contract("haya.system")]] bid_refund {
       name         bidder;
       asset        amount;
 
@@ -81,7 +81,7 @@ namespace eosiosystem {
 
    typedef eosio::multi_index< "bidrefunds"_n, bid_refund > bid_refund_table;
 
-   struct [[eosio::table("global"), eosio::contract("eosio.system")]] eosio_global_state : eosio::blockchain_parameters {
+   struct [[eosio::table("global"), eosio::contract("haya.system")]] eosio_global_state : eosio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
@@ -110,7 +110,7 @@ namespace eosiosystem {
    /**
     * Defines new global state parameters added after version 1.0
     */
-   struct [[eosio::table("global2"), eosio::contract("eosio.system")]] eosio_global_state2 {
+   struct [[eosio::table("global2"), eosio::contract("haya.system")]] eosio_global_state2 {
       eosio_global_state2(){}
 
       uint16_t          new_ram_per_block = 0;
@@ -123,7 +123,7 @@ namespace eosiosystem {
                         (total_producer_votepay_share)(revision) )
    };
 
-   struct [[eosio::table("global3"), eosio::contract("eosio.system")]] eosio_global_state3 {
+   struct [[eosio::table("global3"), eosio::contract("haya.system")]] eosio_global_state3 {
       eosio_global_state3() { }
       time_point        last_vpay_state_update;
       double            total_vpay_share_change_rate = 0;
@@ -131,7 +131,7 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( eosio_global_state3, (last_vpay_state_update)(total_vpay_share_change_rate) )
    };
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] producer_info {
+   struct [[eosio::table, eosio::contract("haya.system")]] producer_info {
       name                  owner;
       double                total_votes = 0;
       eosio::public_key     producer_key; /// a packed public key object
@@ -151,7 +151,7 @@ namespace eosiosystem {
                         (unpaid_blocks)(last_claim_time)(location) )
    };
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] producer_info2 {
+   struct [[eosio::table, eosio::contract("haya.system")]] producer_info2 {
       name            owner;
       double          votepay_share = 0;
       time_point      last_votepay_share_update;
@@ -162,7 +162,7 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( producer_info2, (owner)(votepay_share)(last_votepay_share_update) )
    };
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] voter_info {
+   struct [[eosio::table, eosio::contract("haya.system")]] voter_info {
       name                owner;     /// the voter
       name                proxy;     /// the proxy set by the voter, if any
       std::vector<name>   producers; /// the producers approved by this voter if no proxy set
@@ -213,7 +213,7 @@ namespace eosiosystem {
 
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
 
-   struct [[eosio::table,eosio::contract("eosio.system")]] rex_pool {
+   struct [[eosio::table,eosio::contract("haya.system")]] rex_pool {
       uint8_t    version = 0;
       asset      total_lent; /// total amount of CORE_SYMBOL in open rex_loans
       asset      total_unlent; /// total amount of CORE_SYMBOL available to be lent (connector)
@@ -228,7 +228,7 @@ namespace eosiosystem {
 
    typedef eosio::multi_index< "rexpool"_n, rex_pool > rex_pool_table;
 
-   struct [[eosio::table,eosio::contract("eosio.system")]] rex_fund {
+   struct [[eosio::table,eosio::contract("haya.system")]] rex_fund {
       uint8_t version = 0;
       name    owner;
       asset   balance;
@@ -238,7 +238,7 @@ namespace eosiosystem {
 
    typedef eosio::multi_index< "rexfund"_n, rex_fund > rex_fund_table;
 
-   struct [[eosio::table,eosio::contract("eosio.system")]] rex_balance {
+   struct [[eosio::table,eosio::contract("haya.system")]] rex_balance {
       uint8_t version = 0;
       name    owner;
       asset   vote_stake; /// the amount of CORE_SYMBOL currently included in owner's vote
@@ -251,7 +251,7 @@ namespace eosiosystem {
 
    typedef eosio::multi_index< "rexbal"_n, rex_balance > rex_balance_table;
 
-   struct [[eosio::table,eosio::contract("eosio.system")]] rex_loan {
+   struct [[eosio::table,eosio::contract("haya.system")]] rex_loan {
       uint8_t             version = 0;
       name                from;
       name                receiver;
@@ -276,7 +276,7 @@ namespace eosiosystem {
                                indexed_by<"byowner"_n, const_mem_fun<rex_loan, uint64_t, &rex_loan::by_owner>>
                              > rex_net_loan_table;
 
-   struct [[eosio::table,eosio::contract("eosio.system")]] rex_order {
+   struct [[eosio::table,eosio::contract("haya.system")]] rex_order {
       uint8_t             version = 0;
       name                owner;
       asset               rex_requested;
@@ -299,7 +299,7 @@ namespace eosiosystem {
       asset stake_change;
    };
 
-   class [[eosio::contract("eosio.system")]] system_contract : public native {
+   class [[eosio::contract("haya.system")]] system_contract : public native {
 
       private:
          voters_table            _voters;
@@ -319,16 +319,16 @@ namespace eosiosystem {
 
       public:
          static constexpr eosio::name active_permission{"active"_n};
-         static constexpr eosio::name token_account{"eosio.token"_n};
-         static constexpr eosio::name ram_account{"eosio.ram"_n};
-         static constexpr eosio::name ramfee_account{"eosio.ramfee"_n};
-         static constexpr eosio::name stake_account{"eosio.stake"_n};
-         static constexpr eosio::name bpay_account{"eosio.bpay"_n};
-         static constexpr eosio::name vpay_account{"eosio.vpay"_n};
-         static constexpr eosio::name names_account{"eosio.names"_n};
-         static constexpr eosio::name dao_account{"dao"_n};
-         static constexpr eosio::name rex_account{"eosio.rex"_n};
-         static constexpr eosio::name null_account{"eosio.null"_n};
+         static constexpr eosio::name token_account{"haya.token"_n};
+         static constexpr eosio::name ram_account{"haya.ram"_n};
+         static constexpr eosio::name ramfee_account{"haya.ramfee"_n};
+         static constexpr eosio::name stake_account{"haya.stake"_n};
+         static constexpr eosio::name bpay_account{"haya.bpay"_n};
+         static constexpr eosio::name vpay_account{"haya.vpay"_n};
+         static constexpr eosio::name names_account{"haya.names"_n};
+         static constexpr eosio::name savings_account{"haya.savings"_n};
+         static constexpr eosio::name rex_account{"haya.rex"_n};
+         static constexpr eosio::name null_account{"haya.null"_n};
          static constexpr symbol ramcore_symbol = symbol(symbol_code("RAMCORE"), 4);
          static constexpr symbol ram_symbol     = symbol(symbol_code("RAM"), 0);
          static constexpr symbol rex_symbol     = symbol(symbol_code("REX"), 4);
